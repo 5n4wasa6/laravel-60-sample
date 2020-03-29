@@ -135,5 +135,5 @@ workflows:
       - deploy:
           requires:
             - phan
-            - lint
+            # - lint
             - phpunit

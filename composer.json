@@ -60,6 +60,17 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi"
+        ],
+        "phan": [
+            "php artisan ide-helper:generate",
+            "mv _ide_helper.php .phan/stabs/_ide_helper.php",
+            "vendor/bin/phan --progress-bar -k=.phan/config.php -o .phan/phan.log"
+        ],
+        "lint": [
+            "vendor/bin/phpcs"
+        ],
+        "test": [
+            "vendor/bin/phpunit"
         ]
     }
 }

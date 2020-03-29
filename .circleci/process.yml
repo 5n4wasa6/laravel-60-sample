@@ -1,0 +1,304 @@
+# WARNING: Command 'deploy' in commands.deploy may override built-in CircleCI command 'deploy'
+version: 2
+jobs:
+  build:
+    working_directory: ~/workspace
+    docker:
+    - image: circleci/php:7.3.1-apache-node-browsers
+    - image: circleci/mysql:5.7
+    steps:
+    - checkout
+    - restore_cache:
+        key: npm-cache-{{ checksum "package.json" }}
+    - run:
+        name: install npm
+        command: yarn
+    - save_cache:
+        key: npm-cache-{{ checksum "package.json" }}
+        paths:
+        - node_modules
+    - restore_cache:
+        key: composer-cache-{{ checksum "composer.json" }}
+    - run:
+        name: install composer
+        command: composer install
+    - save_cache:
+        key: composer-cache-{{ checksum "composer.json" }}
+        paths:
+        - vendor
+    - persist_to_workspace:
+        root: ~/workspace
+        paths:
+        - ./*
+    environment:
+    - APP_DEBUG: true
+    - APP_ENV: testing
+    - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+    - APP_URL: http://127.0.0.1:8000
+    - DB_CONNECTION: mysql
+    - DB_HOST: 127.0.0.1
+    - DB_PORT: 3306
+    - DB_DATABASE: circle_test
+    - DB_USERNAME: root
+    - MYSQL_ALLOW_EMPTY_PASSWORD: true
+  lint:
+    working_directory: ~/workspace
+    docker:
+    - image: circleci/php:7.3.1-apache-node-browsers
+    - image: circleci/mysql:5.7
+    steps:
+    - attach_workspace:
+        at: ~/workspace
+    - run:
+        name: phpcs
+        command: composer lint
+    - run:
+        name: npm lint
+        command: yarn lint
+    environment:
+    - APP_DEBUG: true
+    - APP_ENV: testing
+    - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+    - APP_URL: http://127.0.0.1:8000
+    - DB_CONNECTION: mysql
+    - DB_HOST: 127.0.0.1
+    - DB_PORT: 3306
+    - DB_DATABASE: circle_test
+    - DB_USERNAME: root
+    - MYSQL_ALLOW_EMPTY_PASSWORD: true
+  phan:
+    working_directory: ~/workspace
+    docker:
+    - image: circleci/php:7.3.1-apache-node-browsers
+    - image: circleci/mysql:5.7
+    steps:
+    - attach_workspace:
+        at: ~/workspace
+    - run:
+        name: Install php-ast
+        command: |
+          cd ~
+          git clone https://github.com/nikic/php-ast
+          cd php-ast
+          phpize
+          ./configure
+          make
+          sudo make install
+          echo -e "extension=ast.so" | sudo tee /usr/local/etc/php/php.ini > /dev/null
+    - run:
+        name: phan
+        command: composer phan
+    environment:
+    - APP_DEBUG: true
+    - APP_ENV: testing
+    - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+    - APP_URL: http://127.0.0.1:8000
+    - DB_CONNECTION: mysql
+    - DB_HOST: 127.0.0.1
+    - DB_PORT: 3306
+    - DB_DATABASE: circle_test
+    - DB_USERNAME: root
+    - MYSQL_ALLOW_EMPTY_PASSWORD: true
+  phpunit:
+    working_directory: ~/workspace
+    docker:
+    - image: circleci/php:7.3.1-apache-node-browsers
+    - image: circleci/mysql:5.7
+    steps:
+    - attach_workspace:
+        at: ~/workspace
+    - run:
+        name: phpunit
+        command: composer test
+    environment:
+    - APP_DEBUG: true
+    - APP_ENV: testing
+    - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+    - APP_URL: http://127.0.0.1:8000
+    - DB_CONNECTION: mysql
+    - DB_HOST: 127.0.0.1
+    - DB_PORT: 3306
+    - DB_DATABASE: circle_test
+    - DB_USERNAME: root
+    - MYSQL_ALLOW_EMPTY_PASSWORD: true
+  deploy:
+    working_directory: ~/workspace
+    docker:
+    - image: circleci/php:7.3.1-apache-node-browsers
+    - image: circleci/mysql:5.7
+    steps:
+    - attach_workspace:
+        at: ~/workspace
+    - run:
+        command: echo "deploy!!!"
+    environment:
+    - APP_DEBUG: true
+    - APP_ENV: testing
+    - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+    - APP_URL: http://127.0.0.1:8000
+    - DB_CONNECTION: mysql
+    - DB_HOST: 127.0.0.1
+    - DB_PORT: 3306
+    - DB_DATABASE: circle_test
+    - DB_USERNAME: root
+    - MYSQL_ALLOW_EMPTY_PASSWORD: true
+workflows:
+  version: 2
+  build-test:
+    jobs:
+    - build
+    - lint:
+        requires:
+        - build
+    - phan:
+        requires:
+        - build
+    - phpunit:
+        requires:
+        - build
+    - deploy:
+        requires:
+        - phan
+        - lint
+        - phpunit
+
+# Original config.yml file:
+# version: 2.1
+# 
+# executors:
+#   default:
+#     working_directory: ~/workspace
+#     docker:
+#       - image: circleci/php:7.3.1-apache-node-browsers
+#       - image: circleci/mysql:5.7
+#     environment:
+#       - APP_DEBUG: true
+#       - APP_ENV: testing
+#       - APP_KEY: base64:MQEM1P6SoRPg10n5BBJQVCypYOs1nkoiQLm1SS/a19A=
+#       - APP_URL: http://127.0.0.1:8000
+#       - DB_CONNECTION: mysql
+#       - DB_HOST: 127.0.0.1
+#       - DB_PORT: 3306
+#       - DB_DATABASE: circle_test
+#       - DB_USERNAME: root
+#       - MYSQL_ALLOW_EMPTY_PASSWORD: true
+# 
+# commands:
+#   persist-workspace:
+#     steps:
+#       - persist_to_workspace:
+#           root: ~/workspace
+#           paths:
+#             - ./*
+#   npm-install:
+#     steps:
+#       - restore_cache:
+#           key: npm-cache-{{ checksum \"package.json\" }}
+#       - run:
+#           name: install npm
+#           command: yarn
+#       - save_cache:
+#           key: npm-cache-{{ checksum \"package.json\" }}
+#           paths:
+#               - node_modules
+#   composer-install:
+#     steps:
+#       - restore_cache:
+#           key: composer-cache-{{ checksum \"composer.json\" }}
+#       - run:
+#           name: install composer
+#           command: composer install
+#       - save_cache:
+#           key: composer-cache-{{ checksum \"composer.json\" }}
+#           paths:
+#               - vendor
+#   lint:
+#     steps:
+#       - attach_workspace:
+#           at: ~/workspace
+#       - run:
+#           name: phpcs
+#           command: composer lint
+#       - run:
+#           name: npm lint
+#           command: yarn lint
+#   phan:
+#     steps:
+#       - attach_workspace:
+#           at: ~/workspace
+#       - run:
+#           name: Install php-ast
+#           command: |
+#             cd ~
+#             git clone https://github.com/nikic/php-ast
+#             cd php-ast
+#             phpize
+#             ./configure
+#             make
+#             sudo make install
+#             echo -e \"extension=ast.so\" | sudo tee /usr/local/etc/php/php.ini > /dev/null
+#       - run:
+#           name: phan
+#           command: composer phan
+#   phpunit:
+#     steps:
+#       - attach_workspace:
+#           at: ~/workspace
+#       - run:
+#           name: phpunit
+#           command: composer test
+#   deploy:
+#     steps:
+#       - attach_workspace:
+#           at: ~/workspace
+#       - run: echo \"deploy!!!\"
+# 
+# jobs:
+#   build:
+#     executor:
+#       name: default
+#     steps:
+#       - checkout
+#       - npm-install
+#       - composer-install
+#       - persist-workspace
+#   lint:
+#     executor:
+#       name: default
+#     steps:
+#       - lint
+#   phan:
+#     executor:
+#       name: default
+#     steps:
+#       - phan
+#   phpunit:
+#     executor:
+#       name: default
+#     steps:
+#       - phpunit
+#   deploy:
+#     executor:
+#       name: default
+#     steps:
+#       - deploy
+# 
+# workflows:
+#   version: 2
+#   build-test:
+#     jobs:
+#       - build
+#       - lint:
+#           requires:
+#             - build
+#       - phan:
+#           requires:
+#             - build
+#       - phpunit:
+#           requires:
+#             - build
+#       - deploy:
+#           requires:
+#             - phan
+#             - lint
+#             - phpunit
